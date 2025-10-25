@@ -1,5 +1,481 @@
 # InstructLab Educational Chatbot
 
+**[🇬🇧 English](#english-version)** | **[🇪🇸 Español](#versión-en-español)**
+
+---
+
+<a name="english-version"></a>
+# InstructLab Educational Chatbot
+
+An AI educational chatbot built with the **InstructLab** framework, optimized for high-performance inference with **vLLM** and an interactive web interface.
+
+## Features
+
+- **InstructLab Framework**: Fine-tune LLM models using community-driven knowledge and skills taxonomy
+- **vLLM Inference**: High-performance inference server with GPU acceleration and OpenAI-compatible API
+- **FastAPI Backend**: Async REST API with Pydantic validation and robust error handling
+- **Interactive Web Frontend**: Responsive chat interface with real-time status monitoring
+- **Containerized Architecture**: Docker Compose deployment for easy service orchestration
+- **Health Monitoring**: Automatic health checks and service restart
+- **Extensible Taxonomy**: Dewey Decimal Classification-based system for organizing knowledge
+
+## Architecture
+
+```
+┌─────────────┐      ┌─────────────┐      ┌─────────────┐
+│  Frontend   │─────▶│  Backend    │─────▶│    vLLM     │
+│   (Nginx)   │      │  (FastAPI)  │      │   (GPU)     │
+│   Port: 80  │      │  Port: 8000 │      │ Port: 8000  │
+└─────────────┘      └─────────────┘      └─────────────┘
+```
+
+**Data Flow:**
+1. User interacts with web interface (Nginx)
+2. Frontend sends requests to Backend via `/api/*`
+3. Backend processes request and calls vLLM for inference
+4. vLLM executes model on GPU and returns response
+5. Backend formats response with metrics (tokens, latency)
+6. Frontend displays response to user
+
+## Prerequisites
+
+- **Docker** and **Docker Compose** (v2.0+)
+- **NVIDIA GPU** with CUDA drivers installed (for vLLM)
+- **8GB+ RAM** (16GB recommended)
+- **Minimum 10GB disk space** (excluding models)
+- **Python 3.11+** (for local development)
+
+## Installation
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/ricardohonores/instructlab_project.git
+cd instructlab_project
+```
+
+### 2. Obtain the Model
+
+This project requires a fine-tuned language model with InstructLab. You have several options:
+
+#### Option A: Use a Pre-trained InstructLab Model
+
+```bash
+# Install InstructLab CLI
+pip install instructlab
+
+# Download InstructLab base model
+ilab model download
+
+# The model will download to ~/.local/share/instructlab/models/
+# Copy or create symlink to project directory
+mkdir -p models
+ln -s ~/.local/share/instructlab/models/merlinite-7b-lab-Q4_K_M.gguf models/samples_0
+```
+
+#### Option B: Train Your Own Model
+
+```bash
+# Install InstructLab
+pip install instructlab
+
+# Initialize InstructLab
+ilab config init
+
+# Download base model
+ilab model download
+
+# Generate synthetic data from taxonomy
+ilab data generate --taxonomy-path ./y
+
+# Train model (requires GPU with 24GB+ VRAM for training)
+ilab model train
+
+# Convert to HuggingFace format
+ilab model convert
+
+# Copy trained model to project
+cp -r ~/.local/share/instructlab/checkpoints/hf_format/samples_0 ./models/
+```
+
+#### Option C: Download from HuggingFace
+
+```bash
+# Install huggingface-cli
+pip install huggingface-hub
+
+# Download a compatible model (example with Mistral-7B)
+huggingface-cli download mistralai/Mistral-7B-Instruct-v0.2 --local-dir ./models/samples_0
+```
+
+#### Option D: Use Existing Local Models
+
+If you already have a vLLM-compatible model:
+
+```bash
+# Copy your model to models/ directory
+cp -r /path/to/your/model ./models/samples_0
+
+# Ensure model is in HuggingFace or SafeTensors format
+# If you have pytorch_model.bin, convert it:
+python convert_to_safetensors.py
+```
+
+**Important notes about models:**
+- Models are NOT included in the repository due to their large size (5GB-20GB)
+- The `models/` directory is excluded in `.gitignore`
+- You need to obtain a compatible model before running the project
+- vLLM supports models in HuggingFace and SafeTensors formats
+
+### 3. Configure Environment Variables
+
+The `.env` file is already configured with default values:
+
+```bash
+# View current configuration
+cat .env
+```
+
+Important values:
+```env
+MODEL_PATH=./models/samples_0      # Path to model
+VLLM_GPU_MEMORY=0.85               # 85% GPU memory
+VLLM_MAX_MODEL_LEN=4096            # Maximum context length
+FRONTEND_PORT=80                    # Frontend port
+BACKEND_PORT=8000                   # Backend port
+```
+
+### 4. Verify GPU (Optional but Recommended)
+
+```bash
+# Verify NVIDIA GPU is available
+nvidia-smi
+
+# Verify Docker can access GPU
+docker run --rm --gpus all nvidia/cuda:12.1.0-base-ubuntu22.04 nvidia-smi
+```
+
+### 5. Start Services
+
+```bash
+# Start all services in detached mode
+docker-compose up -d
+
+# View logs in real-time
+docker-compose logs -f
+
+# Verify all services are running
+docker-compose ps
+```
+
+You should see 3 services running:
+- `chatbot-frontend` (Nginx)
+- `chatbot-backend` (FastAPI)
+- `vllm-server` (vLLM with GPU)
+
+### 6. Access the Application
+
+- **Web Frontend**: http://localhost
+- **Backend API**: http://localhost:8000
+- **API Docs (Swagger)**: http://localhost:8000/docs
+- **Health Check**: http://localhost:8000/health
+
+## Quick Usage
+
+1. Open your browser at http://localhost
+2. Type a message in the text box
+3. Press Enter or click "Send"
+4. The chatbot will respond using the AI model
+
+**Example questions:**
+- "What is machine learning?"
+- "Explain what a neural network is"
+- "How does natural language processing work?"
+
+## Project Structure
+
+```
+instructlab_project/
+├── backend/              # FastAPI API
+│   ├── app.py           # Main application
+│   ├── config.py        # Configuration
+│   ├── models.py        # Pydantic models
+│   └── services/        # Services (vLLM)
+├── frontend/            # Nginx web interface
+│   ├── index.html      # Chat UI
+│   └── nginx.conf      # Proxy configuration
+├── vllm/               # Inference service
+│   └── Dockerfile      # vLLM container
+├── y/                  # InstructLab Taxonomy
+│   ├── knowledge/      # Knowledge by domain
+│   ├── compositional_skills/  # Complex skills
+│   └── foundational_skills/   # Basic skills
+├── models/             # Models (not versioned)
+│   └── samples_0/      # Main model
+├── docker-compose.yml  # Service orchestration
+├── .env               # Environment variables
+├── CLAUDE.md          # Complete technical documentation
+└── README.md          # This file
+```
+
+## Development
+
+### Run Tests
+
+```bash
+# Test backend endpoints
+python test_backend.py
+
+# Test vLLM chat completions
+python test_vllm_chat.py
+
+# Test with improved error handling
+python test_vllm_fixed.py
+```
+
+### Local Development (Without Docker)
+
+**Backend:**
+```bash
+cd backend
+pip install -r requirements.txt
+uvicorn app:app --reload --host 0.0.0.0 --port 8000
+```
+
+**Frontend:**
+```bash
+cd frontend
+python -m http.server 3000
+# Edit nginx.conf to point to localhost:8000
+```
+
+### Add Knowledge to Taxonomy
+
+1. **Navigate to appropriate domain:**
+```bash
+cd y/knowledge/[domain]/
+mkdir my_topic && cd my_topic
+```
+
+2. **Create `qna.yaml` file:**
+```yaml
+created_by: your_name
+version: 3
+domain: domain_name
+task_description: "Description of what this knowledge teaches."
+seed_examples:
+  - question: "Question 1?"
+    answer: "Detailed and accurate answer..."
+  - question: "Question 2?"
+    answer: "Detailed and accurate answer..."
+  # Minimum 5 examples
+```
+
+3. **Re-generate data and re-train:**
+```bash
+ilab data generate --taxonomy-path ./y
+ilab model train
+```
+
+### Rebuild Services
+
+```bash
+# Rebuild specific service
+docker-compose up -d --build chatbot-backend
+
+# Rebuild all services
+docker-compose up -d --build
+
+# Rebuild without cache
+docker-compose build --no-cache
+```
+
+## Advanced Configuration
+
+### Adjust Model Parameters
+
+Edit `backend/config.py`:
+
+```python
+DEFAULT_MAX_TOKENS = 500        # Increase for longer responses
+DEFAULT_TEMPERATURE = 0.7       # 0.0 = deterministic, 1.0 = creative
+SYSTEM_PROMPT = "Your prompt..."  # Customize bot behavior
+```
+
+### Change Model
+
+```bash
+# 1. Place new model in models/
+cp -r /path/new_model ./models/new_model
+
+# 2. Update .env
+echo "MODEL_PATH=./models/new_model" >> .env
+
+# 3. Restart services
+docker-compose down
+docker-compose up -d
+```
+
+### Optimize for your GPU
+
+Edit `docker-compose.yml`:
+
+```yaml
+vllm-server:
+  command: >
+    --model /models/samples_0
+    --gpu-memory-utilization 0.9      # Use more GPU memory
+    --max-model-len 8192              # Increase context
+    --tensor-parallel-size 2          # Multi-GPU (if you have 2+ GPUs)
+```
+
+## Troubleshooting
+
+### vLLM doesn't start / GPU Error
+
+```bash
+# Verify GPU available
+nvidia-smi
+
+# Check vLLM logs
+docker-compose logs vllm-server
+
+# Reduce GPU memory usage in .env
+VLLM_GPU_MEMORY=0.7  # Reduce to 70%
+```
+
+### Backend can't connect to vLLM
+
+```bash
+# Verify vLLM is healthy
+curl http://localhost:8080/health
+
+# Check backend logs
+docker-compose logs chatbot-backend
+
+# Restart services in order
+docker-compose restart vllm-server
+docker-compose restart chatbot-backend
+```
+
+### Frontend shows "Connection Error"
+
+```bash
+# Verify backend is running
+curl http://localhost:8000/health
+
+# View Nginx logs
+docker-compose logs chatbot-frontend
+
+# Restart frontend
+docker-compose restart chatbot-frontend
+```
+
+### Model doesn't load / Format Error
+
+```bash
+# Convert model to SafeTensors
+python convert_to_safetensors.py
+
+# Verify model exists
+ls -lh models/samples_0/
+
+# Check read permissions
+chmod -R 755 models/samples_0/
+```
+
+## Stop Services
+
+```bash
+# Stop services (keep containers)
+docker-compose stop
+
+# Stop and remove containers
+docker-compose down
+
+# Remove everything (containers, volumes, networks)
+docker-compose down -v
+```
+
+## API Endpoints
+
+### POST /chat
+Send message to chatbot.
+
+**Request:**
+```json
+{
+  "message": "What is machine learning?",
+  "conversation_history": [],
+  "max_tokens": 500,
+  "temperature": 0.7
+}
+```
+
+**Response:**
+```json
+{
+  "response": "Machine learning is...",
+  "model": "/models/samples_0",
+  "tokens_used": 145,
+  "latency_seconds": 2.34
+}
+```
+
+### GET /health
+Check service status.
+
+### GET /models
+List available models.
+
+See complete documentation at: http://localhost:8000/docs
+
+## Documentation
+
+- **CLAUDE.md**: Complete technical documentation of the project
+- **y/docs/**: Guides for contributing to taxonomy
+  - `KNOWLEDGE_GUIDE.md`: How to add knowledge
+  - `SKILLS_GUIDE.md`: How to add skills
+
+## External Resources
+
+- [InstructLab Documentation](https://github.com/instructlab/instructlab)
+- [vLLM Documentation](https://docs.vllm.ai/)
+- [FastAPI Documentation](https://fastapi.tiangolo.com/)
+- [Docker Compose Documentation](https://docs.docker.com/compose/)
+
+## Contributing
+
+1. Fork the project
+2. Create a feature branch (`git checkout -b feature/new-functionality`)
+3. Commit your changes (`git commit -m 'Add new functionality'`)
+4. Push to branch (`git push origin feature/new-functionality`)
+5. Open a Pull Request
+
+## License
+
+This project is open source and available under the MIT license.
+
+## Author
+
+**Ricardo Honores** - [ricardohonores](https://github.com/ricardohonores)
+
+---
+
+**Note**: This project was developed with assistance from Claude Code to demonstrate integration of InstructLab, vLLM and modern microservices architectures.
+
+## Support
+
+To report bugs or request features, please open an [issue](https://github.com/ricardohonores/instructlab_project/issues).
+
+**[🇪🇸 Ver versión en español](#versión-en-español)**
+
+---
+---
+
+<a name="versión-en-español"></a>
+# InstructLab Chatbot Educativo
+
 Un chatbot educativo de IA construido con el framework **InstructLab**, optimizado para inferencia de alto rendimiento con **vLLM** y una interfaz web interactiva.
 
 ## Características
@@ -460,3 +936,5 @@ Este proyecto es de código abierto y está disponible bajo la licencia MIT.
 ## Soporte
 
 Para reportar bugs o solicitar features, por favor abre un [issue](https://github.com/ricardohonores/instructlab_project/issues).
+
+**[🇬🇧 View English version](#english-version)**
