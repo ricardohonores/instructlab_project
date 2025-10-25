@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+*.egg-info/
+.pytest_cache/
+.coverage
+
+# Entornos virtuales
+venv/
+.venv/
+
+# Logs
+logs/
+*.log
+tunnel.log
+
+# Modelos (archivos muy grandes)
+models/
+*.bin
+*.safetensors
+*.gguf
+*.pt
+*.pth
+
+# Docker
+*.lock
+None.lock
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Archivos de configuración sensibles (descomentar si tienes datos sensibles)
+# .env
+
+# Archivos temporales
+*.tmp
+*.bak
+*.cache
+
+# Cloudflare
+cloudflared-linux-amd64.deb

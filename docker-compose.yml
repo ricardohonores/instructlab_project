@@ -1,0 +1,100 @@
+version: '3.8'
+
+services:
+  # Servidor vLLM con GPU
+  vllm-server:
+    build:
+      context: ./vllm
+      dockerfile: Dockerfile
+    container_name: chatbot-vllm
+    image: chatbot-vllm:latest
+    ports:
+      - "8080:8000"
+    volumes:
+      - ./models/samples_0:/models:ro
+      - ./logs/vllm:/logs
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+      - VLLM_ATTENTION_BACKEND=FLASHINFER
+    command: >
+      --model /models
+      --host 0.0.0.0
+      --port 8000
+      --gpu-memory-utilization 0.85
+      --max-model-len 4096
+      --trust-remote-code
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - chatbot-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 300s
+    restart: unless-stopped
+
+  # Backend FastAPI
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: chatbot-backend
+    image: chatbot-backend:latest
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./logs/backend:/app/logs
+    environment:
+      - VLLM_API_URL=http://vllm-server:8000
+      - VLLM_MODEL_NAME=/models
+      - DEBUG=false
+    depends_on:
+      vllm-server:
+        condition: service_healthy
+    networks:
+      - chatbot-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  # Frontend Nginx
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: chatbot-frontend
+    image: chatbot-frontend:latest
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - chatbot-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+networks:
+  chatbot-network:
+    name: chatbot-network
+    driver: bridge
+
+volumes:
+  models:
+    driver: local
+  logs:
+    driver: local
