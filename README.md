@@ -931,7 +931,7 @@ Este proyecto es de código abierto y está disponible bajo la licencia MIT.
 
 ---
 
-**Nota**: Este proyecto fue desarrollado con asistencia de Claude Code para demostrar integración de InstructLab, vLLM y arquitecturas modernas de microservicios.
+**Nota**: Este documento fue desarrollado con asistencia de Claude Code para demostrar integración de InstructLab, vLLM y arquitecturas modernas de microservicios.
 
 ## Soporte
 
