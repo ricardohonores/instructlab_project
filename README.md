@@ -462,7 +462,7 @@ This project is open source and available under the MIT license.
 
 ---
 
-**Note**: This project was developed with assistance from Claude Code to demonstrate integration of InstructLab, vLLM and modern microservices architectures.
+**Note**: This document was developed with assistance from Claude Code to demonstrate integration of InstructLab, vLLM and modern microservices architectures.
 
 ## Support
 
